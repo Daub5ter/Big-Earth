@@ -1,6 +1,8 @@
 package parse
 
 import (
+	"errors"
+	"fmt"
 	"github.com/gocolly/colly"
 	"log"
 	"parsing-service/internal/db"
@@ -25,7 +27,13 @@ func (p *Parsing) Parse(r db.Request) {
 
 	for counts := 0; len(data.Events) == 0; counts++ {
 		log.Println("try to parse date...")
-		data = p.parseRussia()
+
+		d, err := p.parseRussia()
+		if err != nil {
+			log.Println(err)
+		} else {
+			data.Events = d.Events
+		}
 
 		number, err := random.CreateNumber(1, 4)
 		if err != nil {
@@ -36,26 +44,28 @@ func (p *Parsing) Parse(r db.Request) {
 
 		if counts > 10 {
 			counts = 0
-			time.Sleep(15 * time.Second)
+			time.Sleep(12 * time.Second)
 		}
 	}
 
 	log.Println(data)
 }
 
-func (p *Parsing) parseRussia() *Data {
-	data := NewData()
+func (p *Parsing) parseRussia() (*Data, error) {
+	var data *Data
 	p.Collector.AllowURLRevisit = true
 
 	p.Collector.OnHTML("div.rubric-featured__container", func(e *colly.HTMLElement) {
 
 		if e.ChildText("div.rubric-featured__preview") != "" {
+			if data == nil {
+				data = NewData()
+			}
 
 			var name string
 			if e.ChildText("div.rubric-featured__top") != "" {
 				name = e.ChildText("div.rubric-featured__top") + " "
 			}
-
 			name += e.ChildText("div.rubric-featured__title") + " " +
 				e.ChildText("div.rubric-featured__preview")
 
@@ -71,8 +81,12 @@ func (p *Parsing) parseRussia() *Data {
 
 	err := p.Collector.Visit(url)
 	if err != nil {
-		log.Println("Error visit", url, err)
+		return nil, errors.New(fmt.Sprint("Error visit", url, err))
 	}
 
-	return data
+	if data == nil {
+		return nil, errors.New("error captcha/protect")
+	}
+
+	return data, nil
 }
