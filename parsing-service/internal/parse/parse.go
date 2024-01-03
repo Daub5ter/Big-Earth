@@ -18,7 +18,7 @@ func NewParsing() *Parsing {
 
 func NewData() *Data {
 	var data Data
-	data.Events = make([]Event, 0, 24)
+	data.Events = make([]Event, 0, 32)
 	return &data
 }
 
