@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-func CreateNumber(min int64, max int64) (time.Duration, error) {
+func CreateDuration(min int64, max int64) (time.Duration, error) {
 	number := big.NewInt(max - min + 1)
 	randInt, err := rand.Int(rand.Reader, number)
 
