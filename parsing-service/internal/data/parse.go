@@ -16,14 +16,14 @@ func NewParsing() *Parsing {
 	return &Parsing{Collector: colly.NewCollector()}
 }
 
-func NewData() *Data {
-	var data Data
+func newPlaceInformation() *PlaceInformation {
+	var data PlaceInformation
 	data.Events = make([]Event, 0, 32)
 	return &data
 }
 
-func (p *Parsing) Parse(r Request) {
-	var data *Data
+func (p *Parsing) Parse(place Place) *PlaceInformation {
+	var data *PlaceInformation
 	p.Collector.AllowURLRevisit = true
 
 	for counts := 0; data == nil; counts++ {
@@ -48,13 +48,15 @@ func (p *Parsing) Parse(r Request) {
 	}
 
 	log.Println(data)
+
+	return data
 }
 
-func (p *Parsing) parseRussia(data *Data) error {
+func (p *Parsing) parseRussia(data *PlaceInformation) error {
 	p.Collector.OnHTML("div.rubric-featured__container", func(e *colly.HTMLElement) {
 		if e.ChildText("div.rubric-featured__preview") != "" {
 			if data == nil {
-				data = NewData()
+				data = newPlaceInformation()
 			}
 
 			var name strings.Builder
@@ -66,8 +68,10 @@ func (p *Parsing) parseRussia(data *Data) error {
 			name.WriteString(" ")
 			name.WriteString(e.ChildText("div.rubric-featured__preview"))
 
+			nameCorrect := strings.ReplaceAll(name.String(), "    ", " ")
+
 			event := Event{
-				Name:  strings.ReplaceAll(name.String(), "   ", " "),
+				Name:  nameCorrect,
 				Image: e.ChildAttrs("img", "src")[0],
 				Link:  "https://afisha.yandex.ru" + e.ChildAttrs("a", "href")[0],
 			}
