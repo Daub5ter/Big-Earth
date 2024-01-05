@@ -26,7 +26,11 @@ func (p *Parsing) Parse(place Place) *PlaceInformation {
 	var data *PlaceInformation
 	p.Collector.AllowURLRevisit = true
 
-	for counts := 0; data == nil; counts++ {
+	err := p.parseRussia(data)
+	if err != nil {
+		log.Println(err)
+	}
+	/*	for counts := 0; data == nil; counts++ {
 		log.Println("try to parse date...")
 
 		err := p.parseRussia(data)
@@ -45,7 +49,7 @@ func (p *Parsing) Parse(place Place) *PlaceInformation {
 			counts = 0
 			time.Sleep(20 * time.Second)
 		}
-	}
+	}*/
 
 	log.Println(data)
 
@@ -53,6 +57,10 @@ func (p *Parsing) Parse(place Place) *PlaceInformation {
 }
 
 func (p *Parsing) parseRussia(data *PlaceInformation) error {
+	p.Collector.OnRequest(func(r *colly.Request) {
+		r.Headers.Set("User-Agent", "Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:47.0) Gecko/20100101 Firefox/47.0")
+	})
+
 	p.Collector.OnHTML("div.rubric-featured__container", func(e *colly.HTMLElement) {
 		if e.ChildText("div.rubric-featured__preview") != "" {
 			if data == nil {
@@ -80,14 +88,24 @@ func (p *Parsing) parseRussia(data *PlaceInformation) error {
 		}
 	})
 
-	err := p.Collector.Visit(url)
-	if err != nil {
-		return errors.New(fmt.Sprintf("Error visit %s, %s", url, err.Error()))
-	}
+	for counts := 0; data == nil; counts++ {
+		log.Println("try to parse date...")
 
-	if data == nil {
-		return errors.New("error captcha/protect")
+		err := p.Collector.Visit(url)
+		if err != nil {
+			log.Println(errors.New(fmt.Sprintf("Error visit %s, %s", url, err.Error())))
+		}
+
+		dur, err := random.CreateDuration(1, 6)
+		if err != nil {
+			log.Println(err)
+		}
+
+		time.Sleep(dur * time.Second)
 	}
+	//if data == nil {
+	//	return errors.New("error captcha/protect")
+	//}
 
 	return nil
 }
