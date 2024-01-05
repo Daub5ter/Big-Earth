@@ -1,6 +1,11 @@
-package parse
+package data
 
 import "github.com/gocolly/colly"
+
+type Request struct {
+	Country string
+	City    string
+}
 
 type Parsing struct {
 	Collector *colly.Collector
