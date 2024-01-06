@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/gocolly/colly"
-	"log"
 	"strconv"
 	"strings"
 )
@@ -21,19 +20,20 @@ func newPlaceInformation(allocationEvent int) *PlaceInformation {
 	return &placeInformation
 }
 
-func (p *Parsing) Parse(place Place) *PlaceInformation {
+func (p *Parsing) Parse(place Place) (*PlaceInformation, error) {
 	placeInformation := newPlaceInformation(24)
 	p.Collector.AllowURLRevisit = true
 
 	err := p.parseRussia(placeInformation)
 	if err != nil {
-		log.Println(err)
+		return nil, err
 	}
 
-	return placeInformation
+	return placeInformation, nil
 }
 
 func (p *Parsing) parseRussia(placeInformation *PlaceInformation) error {
+	var err error
 	maxEvents := 10
 	eventCounter := 1
 
@@ -42,12 +42,13 @@ func (p *Parsing) parseRussia(placeInformation *PlaceInformation) error {
 	})
 
 	p.Collector.OnHTML("div.whitespace-nowrap.mr-3", func(e *colly.HTMLElement) {
-		var err error
 		parts := strings.Split(e.Text, "/")
-		maxEvents, err = strconv.Atoi(parts[1])
-		if err != nil {
-			log.Println(err)
+		if len(parts) < 2 {
+			err = errors.New("no necessary data")
+			return
 		}
+
+		maxEvents, err = strconv.Atoi(parts[1])
 	})
 
 	p.Collector.OnHTML("div.swiper-slide", func(e *colly.HTMLElement) {
@@ -83,9 +84,13 @@ func (p *Parsing) parseRussia(placeInformation *PlaceInformation) error {
 		eventCounter++
 	})
 
-	err := p.Collector.Visit(url)
+	errVisit := p.Collector.Visit(url)
+	if errVisit != nil {
+		return errors.New(fmt.Sprintf("Error visit %s, %s", url, errVisit.Error()))
+	}
+
 	if err != nil {
-		log.Println(errors.New(fmt.Sprintf("Error visit %s, %s", url, err.Error())))
+		return errors.New(fmt.Sprintf("Error sraping %s, %s", url, err.Error()))
 	}
 
 	return nil

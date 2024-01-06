@@ -7,7 +7,7 @@ import (
 )
 
 type Parsing interface {
-	Parse(r data.Place) *data.PlaceInformation
+	Parse(data.Place) (*data.PlaceInformation, error)
 }
 
 func Parse(p Parsing) http.HandlerFunc {
@@ -17,7 +17,16 @@ func Parse(p Parsing) http.HandlerFunc {
 			City:    "Krasnodar",
 		}
 
-		placeInformation := p.Parse(req)
+		placeInformation, err := p.Parse(req)
+		if err != nil {
+			payload := code.JSONResponse{
+				Error:   true,
+				Message: "not parsed",
+				Data:    err,
+			}
+
+			code.WriteJSON(w, http.StatusBadRequest, payload)
+		}
 
 		payload := code.JSONResponse{
 			Error:   false,
