@@ -28,10 +28,4 @@ func main() {
 	if err != nil {
 		log.Panic(err)
 	}
-
-	//r := data.Request{
-	//	Country: "Russia",
-	//	City:    "Krasnodar",
-	//}
-	//	handlers.Parse(parsing, r)
 }

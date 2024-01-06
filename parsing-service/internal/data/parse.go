@@ -5,107 +5,88 @@ import (
 	"fmt"
 	"github.com/gocolly/colly"
 	"log"
-	"parsing-service/pkg/random"
+	"strconv"
 	"strings"
-	"time"
 )
 
-const url = "https://afisha.yandex.ru/krasnodar"
+const url = "https://krd.kassir.ru"
 
 func NewParsing() *Parsing {
 	return &Parsing{Collector: colly.NewCollector()}
 }
 
-func newPlaceInformation() *PlaceInformation {
-	var data PlaceInformation
-	data.Events = make([]Event, 0, 32)
-	return &data
+func newPlaceInformation(allocationEvent int) *PlaceInformation {
+	var placeInformation PlaceInformation
+	placeInformation.Events = make([]Event, 0, allocationEvent)
+	return &placeInformation
 }
 
 func (p *Parsing) Parse(place Place) *PlaceInformation {
-	var data *PlaceInformation
+	placeInformation := newPlaceInformation(24)
 	p.Collector.AllowURLRevisit = true
 
-	err := p.parseRussia(data)
+	err := p.parseRussia(placeInformation)
 	if err != nil {
 		log.Println(err)
 	}
-	/*	for counts := 0; data == nil; counts++ {
-		log.Println("try to parse date...")
 
-		err := p.parseRussia(data)
-		if err != nil {
-			log.Println(err)
-		}
-
-		dur, err := random.CreateDuration(1, 4)
-		if err != nil {
-			log.Println(err)
-		}
-
-		time.Sleep(dur * time.Second)
-
-		if counts > 10 {
-			counts = 0
-			time.Sleep(20 * time.Second)
-		}
-	}*/
-
-	log.Println(data)
-
-	return data
+	return placeInformation
 }
 
-func (p *Parsing) parseRussia(data *PlaceInformation) error {
+func (p *Parsing) parseRussia(placeInformation *PlaceInformation) error {
+	maxEvents := 10
+	eventCounter := 1
+
 	p.Collector.OnRequest(func(r *colly.Request) {
 		r.Headers.Set("User-Agent", "Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:47.0) Gecko/20100101 Firefox/47.0")
 	})
 
-	p.Collector.OnHTML("div.rubric-featured__container", func(e *colly.HTMLElement) {
-		if e.ChildText("div.rubric-featured__preview") != "" {
-			if data == nil {
-				data = newPlaceInformation()
-			}
-
-			var name strings.Builder
-			if e.ChildText("div.rubric-featured__top") != "" {
-				name.WriteString(e.ChildText("div.rubric-featured__top"))
-				name.WriteString(" ")
-			}
-			name.WriteString(e.ChildText("div.rubric-featured__title"))
-			name.WriteString(" ")
-			name.WriteString(e.ChildText("div.rubric-featured__preview"))
-
-			nameCorrect := strings.ReplaceAll(name.String(), "    ", " ")
-
-			event := Event{
-				Name:  nameCorrect,
-				Image: e.ChildAttrs("img", "src")[0],
-				Link:  "https://afisha.yandex.ru" + e.ChildAttrs("a", "href")[0],
-			}
-
-			data.Events = append(data.Events, event)
-		}
-	})
-
-	for counts := 0; data == nil; counts++ {
-		log.Println("try to parse date...")
-
-		err := p.Collector.Visit(url)
-		if err != nil {
-			log.Println(errors.New(fmt.Sprintf("Error visit %s, %s", url, err.Error())))
-		}
-
-		dur, err := random.CreateDuration(1, 6)
+	p.Collector.OnHTML("div.whitespace-nowrap.mr-3", func(e *colly.HTMLElement) {
+		var err error
+		parts := strings.Split(e.Text, "/")
+		maxEvents, err = strconv.Atoi(parts[1])
 		if err != nil {
 			log.Println(err)
 		}
+	})
 
-		time.Sleep(dur * time.Second)
+	p.Collector.OnHTML("div.swiper-slide", func(e *colly.HTMLElement) {
+		if eventCounter == maxEvents {
+			return
+		}
+
+		name := e.ChildText("h2.line-clamp-2")
+		if name == "" {
+			return
+		}
+
+		image := e.ChildAttrs("source", "srcset")[0]
+		if image == "" {
+			return
+		}
+
+		var link string
+		if len(e.ChildAttrs("div.cursor-pointer", "href")) != 0 {
+			link = e.ChildAttrs("div.cursor-pointer", "href")[0]
+		} else {
+			link = e.ChildAttrs("a.cursor-pointer", "href")[0]
+		}
+
+		event := Event{
+			Name:  name,
+			Image: image,
+			Link:  link,
+		}
+
+		placeInformation.Events = append(placeInformation.Events, event)
+
+		eventCounter++
+	})
+
+	err := p.Collector.Visit(url)
+	if err != nil {
+		log.Println(errors.New(fmt.Sprintf("Error visit %s, %s", url, err.Error())))
 	}
-	//if data == nil {
-	//	return errors.New("error captcha/protect")
-	//}
 
 	return nil
 }

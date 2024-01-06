@@ -28,7 +28,7 @@ func ReadJSON(r *http.Request, data any) error {
 
 // WriteJSON write struct to json and send it.
 func WriteJSON(w http.ResponseWriter, status int, data any) {
-	payload, err := json.Marshal(data)
+	payload, err := json.MarshalIndent(data, "", "\t")
 	if err != nil {
 		log.Println(err)
 		return
