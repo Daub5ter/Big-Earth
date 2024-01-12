@@ -4,23 +4,28 @@ import (
 	"errors"
 	"fmt"
 	"github.com/gocolly/colly"
+	"parsing-service/internal/models"
 	"strconv"
 	"strings"
 )
 
 const url = "https://krd.kassir.ru"
 
+type Parsing struct {
+	Collector *colly.Collector
+}
+
 func NewParsing() *Parsing {
 	return &Parsing{Collector: colly.NewCollector()}
 }
 
-func newPlaceInformation(allocationEvent int) *PlaceInformation {
-	var placeInformation PlaceInformation
-	placeInformation.Events = make([]Event, 0, allocationEvent)
+func newPlaceInformation(allocationEvent int) *models.PlaceInformation {
+	var placeInformation models.PlaceInformation
+	placeInformation.Events = make([]models.Event, 0, allocationEvent)
 	return &placeInformation
 }
 
-func (p *Parsing) Parse(place Place) (*PlaceInformation, error) {
+func (p *Parsing) Parse(place models.Place) (*models.PlaceInformation, error) {
 	placeInformation := newPlaceInformation(24)
 	p.Collector.AllowURLRevisit = true
 
@@ -32,7 +37,7 @@ func (p *Parsing) Parse(place Place) (*PlaceInformation, error) {
 	return placeInformation, nil
 }
 
-func (p *Parsing) parseRussia(placeInformation *PlaceInformation) error {
+func (p *Parsing) parseRussia(placeInformation *models.PlaceInformation) error {
 	var err error
 	maxEvents := 10
 	eventCounter := 1
@@ -73,7 +78,7 @@ func (p *Parsing) parseRussia(placeInformation *PlaceInformation) error {
 			link = e.ChildAttrs("a.cursor-pointer", "href")[0]
 		}
 
-		event := Event{
+		event := models.Event{
 			Name:  name,
 			Image: image,
 			Link:  link,

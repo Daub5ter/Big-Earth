@@ -2,17 +2,17 @@ package handlers
 
 import (
 	"net/http"
-	"parsing-service/internal/data"
+	"parsing-service/internal/models"
 	"parsing-service/pkg/code"
 )
 
-type Parsing interface {
-	Parse(data.Place) (*data.PlaceInformation, error)
+type ParsingI interface {
+	Parse(models.Place) (*models.PlaceInformation, error)
 }
 
-func Parse(p Parsing) http.HandlerFunc {
+func Parse(p ParsingI) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		req := data.Place{
+		req := models.Place{
 			Country: "Russia",
 			City:    "Krasnodar",
 		}

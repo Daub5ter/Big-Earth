@@ -1,14 +1,8 @@
-package data
-
-import "github.com/gocolly/colly"
+package models
 
 type Place struct {
 	Country string `json:"country"`
 	City    string `json:"city"`
-}
-
-type Parsing struct {
-	Collector *colly.Collector
 }
 
 type PlaceInformation struct {
