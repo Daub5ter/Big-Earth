@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package parsing;
+
+option go_package = "/handlers";
+
+service Parsing {
+  rpc Parse(Place) returns (PlaceInformation) {}
+}
+
+message Place {
+  string city = 1;
+  string country = 2;
+}
+
+message PlaceInformation {
+  string text = 1;
+  repeated string photos = 2;
+  repeated string videos = 3;
+  repeated Event events = 4;
+}
+
+message Event {
+  string name = 1;
+  string image = 2;
+  string link = 3;
+}

@@ -1,0 +1,10 @@
+server:
+  domain:
+  port: 50001
+  time_out: 10s
+database:
+  timeout: 5s
+logger:
+  level: debug
+events_uris:
+  russia_krasnodar: https://krd.kassir.ru

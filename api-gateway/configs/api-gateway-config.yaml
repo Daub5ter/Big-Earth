@@ -1,0 +1,9 @@
+server:
+  domain:
+  port: 443
+  time_out: 10s
+grpc:
+  connections:
+    parsing: parsing-service:50001
+logger:
+  level: debug
