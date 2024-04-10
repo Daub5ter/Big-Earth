@@ -1,4 +1,4 @@
 # Big-Earth
 Coursework
 
-Parse and get data service
+Parse countries and get data service
