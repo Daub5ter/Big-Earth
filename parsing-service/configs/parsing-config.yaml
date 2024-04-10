@@ -6,5 +6,3 @@ database:
   timeout: 5s
 logger:
   level: debug
-events_uris:
-  russia_krasnodar: https://krd.kassir.ru

@@ -1,4 +1,4 @@
-package database
+package postgres
 
 import (
 	"context"
@@ -11,7 +11,7 @@ import (
 // GetPlaceInformation получает данные по месту.
 func (db db) GetPlaceInformation(place *models.Place) (*models.PlaceInformation, error) {
 	if place.Country == "" || place.City == "" {
-		return nil, models.ErrBadRequest
+		return nil, models.ErrEmptyData
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), db.timeout)
@@ -86,4 +86,38 @@ func (db db) GetPlaceInformation(place *models.Place) (*models.PlaceInformation,
 	placeInformation.Videos = videos
 
 	return &placeInformation, nil
+}
+
+// GetEventsLink получает ссылку на события по месту.
+func (db db) GetEventsLink(place *models.Place) (string, error) {
+	if place.Country == "" || place.City == "" {
+		return "", models.ErrEmptyData
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), db.timeout)
+	defer cancel()
+
+	var placeID uint64
+	row := db.conn.QueryRowContext(ctx, selectPlaceID, place.Country, place.City)
+
+	err := row.Scan(&placeID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", models.ErrNotFound
+		}
+		return "", err
+	}
+
+	var link string
+	row = db.conn.QueryRowContext(ctx, selectEventsLink, placeID)
+
+	err = row.Scan(&link)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", models.ErrNotFound
+		}
+		return "", err
+	}
+
+	return link, nil
 }

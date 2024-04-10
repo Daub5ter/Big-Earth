@@ -3,27 +3,29 @@ package handlers
 import (
 	"context"
 	"errors"
+	"fmt"
+	log "log/slog"
 
 	"parsing-service/internal/models"
-	"parsing-service/internal/tools/database"
+	parsinggrpc "parsing-service/internal/tools/grpc/parsing"
 	"parsing-service/internal/tools/parsing"
-	"parsing-service/internal/tools/rpc/grpcparsing"
+	"parsing-service/internal/tools/postgres"
 )
 
-// kassir.ru
-// wikipedia.org
-// youtube.com
-// tripadvisor.ru
+// события - kassir.ru
+// фото - wikipedia.org
+// видео - youtube.com
+// текст - tripadvisor.ru
 
 // Parser - структура для работы с другими микросервисами.
 type Parser struct {
-	grpcparsing.UnsafeParsingServer
-	database database.Database
+	parsinggrpc.UnimplementedParsingServer
+	database postgres.Database
 	parsing  parsing.Parsing
 }
 
 // NewParser создает парсера.
-func NewParser(database database.Database, parsing parsing.Parsing) *Parser {
+func NewParser(database postgres.Database, parsing parsing.Parsing) *Parser {
 	return &Parser{
 		database: database,
 		parsing:  parsing,
@@ -31,10 +33,27 @@ func NewParser(database database.Database, parsing parsing.Parsing) *Parser {
 }
 
 // Parse получает данные из парсера и базы данных.
-func (p *Parser) Parse(ctx context.Context, place *grpcparsing.Place) (*grpcparsing.PlaceInformation, error) {
+func (p *Parser) Parse(ctx context.Context, place *parsinggrpc.Place) (*parsinggrpc.PlaceInformation, error) {
+	if place.Country == "" || place.City == "" {
+		return nil, models.ErrEmptyData
+	}
+
 	pl := models.Place{
 		Country: place.Country,
 		City:    place.City,
+	}
+
+	eventsLink, err := p.database.GetEventsLink(&pl)
+	if err != nil {
+		if errors.Is(err, models.ErrNotFound) {
+			return nil, models.ErrNotFound
+		}
+		if errors.Is(err, models.ErrEmptyData) {
+			return nil, models.ErrEmptyData
+		}
+
+		log.Error(fmt.Sprintf("ошибка на стороне сервера: %v", err))
+		return nil, models.ErrServer
 	}
 
 	type eventsWithError struct {
@@ -47,9 +66,9 @@ func (p *Parser) Parse(ctx context.Context, place *grpcparsing.Place) (*grpcpars
 	go func() {
 		defer close(events)
 
-		e, err := p.parsing.ParseEvent(&pl)
-		if err != nil {
-			events <- eventsWithError{events: nil, err: err}
+		e, errParseEvent := p.parsing.ParseEvent(&pl, eventsLink)
+		if errParseEvent != nil {
+			events <- eventsWithError{events: nil, err: errParseEvent}
 			return
 		}
 
@@ -61,34 +80,41 @@ func (p *Parser) Parse(ctx context.Context, place *grpcparsing.Place) (*grpcpars
 		if errors.Is(err, models.ErrNotFound) {
 			return nil, models.ErrNotFound
 		}
-		if errors.Is(err, models.ErrBadRequest) {
-			return nil, models.ErrBadRequest
+		if errors.Is(err, models.ErrEmptyData) {
+			return nil, models.ErrEmptyData
 		}
 
-		return nil, err
+		log.Error(fmt.Sprintf("ошибка на стороне сервера: %v", err))
+		return nil, models.ErrServer
 	}
 
-	// TODO: использовать context для проверки на ошибку и возвращаться в таком случае
-	e := <-events
-	if e.err != nil {
-		return nil, err
-	}
+	for {
+		select {
+		case <-ctx.Done():
+			log.Warn("отмена контекста: перестаем ждать ответа от events")
+			return nil, nil
+		case e := <-events:
+			if e.err != nil {
+				return nil, err
+			}
 
-	var evnts []*grpcparsing.Event
-	for _, event := range e.events {
-		evnts = append(evnts,
-			&grpcparsing.Event{
-				Name:  event.Name,
-				Image: event.Image,
-				Link:  event.Link,
-			},
-		)
-	}
+			var evs []*parsinggrpc.Event
+			for _, event := range e.events {
+				evs = append(evs,
+					&parsinggrpc.Event{
+						Name:  event.Name,
+						Image: event.Image,
+						Link:  event.Link,
+					},
+				)
+			}
 
-	return &grpcparsing.PlaceInformation{
-		Text:   data.Text,
-		Photos: data.Photos,
-		Videos: data.Videos,
-		Events: evnts,
-	}, nil
+			return &parsinggrpc.PlaceInformation{
+				Text:   data.Text,
+				Photos: data.Photos,
+				Videos: data.Videos,
+				Events: evs,
+			}, nil
+		}
+	}
 }

@@ -7,28 +7,22 @@ type Config interface {
 	ServerConfig
 	DatabaseConfig
 	LoggerConfig
-	EventsURIs
 }
 
 // ServerConfig - API конфига сервера.
 type ServerConfig interface {
-	GetDomain() string
-	GetPort() string
-	GetTimeout() time.Duration
+	Domain() string
+	Port() string
+	Timeout() time.Duration
 }
 
 // DatabaseConfig - API конфига базы данных.
 type DatabaseConfig interface {
-	GetDSN() string
-	GetDBTimeout() time.Duration
+	DSN() string
+	DBTimeout() time.Duration
 }
 
 // LoggerConfig - конфигурация логов приложения.
 type LoggerConfig interface {
-	GetLoggerLevel() string
-}
-
-// EventsURIs - конфигурация uris событий места.
-type EventsURIs interface {
-	GetRussiaKrasnodar() string
+	LoggerLevel() string
 }

@@ -11,8 +11,8 @@ import (
 	"github.com/gocolly/colly"
 )
 
-// parseEventRussia парсит данные о событиях в стране Россия.
-func (p parser) parseEventRussia(urlPlace string, events *[]*models.Event) error {
+// parseRussia парсит данные о событиях в стране Russia.
+func (p parser) parseRussia(urlPlace string, events *[]*models.Event) error {
 	var err error
 	maxEvents := 10
 	eventCounter := 1

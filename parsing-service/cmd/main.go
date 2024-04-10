@@ -10,13 +10,14 @@ import (
 
 	"parsing-service/internal/handlers"
 	"parsing-service/internal/tools/config"
-	"parsing-service/internal/tools/database"
+	parsinggrpc "parsing-service/internal/tools/grpc/parsing"
 	"parsing-service/internal/tools/parsing"
-	"parsing-service/internal/tools/rpc/grpcparsing"
+	"parsing-service/internal/tools/postgres"
 	"parsing-service/pkg/dbconn/pgsql"
 	"parsing-service/pkg/logger"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 )
 
 func main() {
@@ -28,19 +29,19 @@ func main() {
 	}
 
 	// Настройка логов.
-	logger.SetLogger(cfg.(config.LoggerConfig).GetLoggerLevel())
+	logger.SetLogger(cfg.(config.LoggerConfig).LoggerLevel())
 
 	// Создание парсера.
-	parse := parsing.NewParsing(cfg)
+	parse := parsing.NewParsing()
 
 	// Соединение с БД.
-	conn := pgsql.ConnectToDB(cfg.GetDSN())
+	conn := pgsql.ConnectToDB(cfg.(config.DatabaseConfig).DSN())
 	if conn == nil {
 		log.Error("ошибка подключения к Postgres")
 		return
 	}
 
-	db, err := database.NewDB(conn, cfg)
+	db, err := postgres.NewDB(conn, cfg)
 	if err != nil {
 		log.Error(fmt.Sprintf("ошибка подключения к базе данных: %v", err))
 		return
@@ -50,14 +51,20 @@ func main() {
 
 	// Настройка конфигурации сервера.
 	listenGRPC, err := net.Listen("tcp",
-		fmt.Sprintf("%s:%s", cfg.(config.ServerConfig).GetDomain(), cfg.(config.ServerConfig).GetPort()))
+		fmt.Sprintf("%s:%s", cfg.(config.ServerConfig).Domain(), cfg.(config.ServerConfig).Port()))
 	if err != nil {
 		log.Error(fmt.Sprintf("ошибка прослушивания порта gRPC: %v", err))
 		return
 	}
 
-	grpcSrv := grpc.NewServer()
-	grpcparsing.RegisterParsingServer(grpcSrv, handlers.NewParser(db, parse))
+	creds, err := credentials.NewServerTLSFromFile("./app/cert.pem", "./app/key.pem")
+	if err != nil {
+		log.Error(fmt.Sprintf("ошибка TLS подключения: %v", err))
+		return
+	}
+
+	grpcSrv := grpc.NewServer(grpc.Creds(creds))
+	parsinggrpc.RegisterParsingServer(grpcSrv, handlers.NewParser(db, parse))
 
 	go func() {
 		err = grpcSrv.Serve(listenGRPC)

@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 )
 
-// SetLogger устанавливает логер.
+// SetLogger устанавливает логгер.
 func SetLogger(level string) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
 		AddSource: true,

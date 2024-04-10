@@ -10,10 +10,9 @@ import (
 
 // appConfig - конфиг приложения.
 type appConfig struct {
-	ServerConfig     serverConfig     `yaml:"server"`
-	DatabaseConfig   databaseConfig   `yaml:"database"`
-	LoggerConfig     loggerConfig     `yaml:"logger"`
-	EventsURIsConfig eventsURIsConfig `yaml:"events_uris"`
+	ServerConfig   serverConfig   `yaml:"server"`
+	DatabaseConfig databaseConfig `yaml:"database"`
+	LoggerConfig   loggerConfig   `yaml:"logger"`
 }
 
 // serverConfig - конфиг сервера.
@@ -32,10 +31,6 @@ type databaseConfig struct {
 // loggerConfig - структура конфиграции логов.
 type loggerConfig struct {
 	Level string `yaml:"level"`
-}
-
-type eventsURIsConfig struct {
-	RussiaKrasnodar string `yaml:"russia_krasnodar"`
 }
 
 // NewConfig создает API конфига.
@@ -61,23 +56,20 @@ func NewConfig(configPath string) (Config, error) {
 	return &cfg, nil
 }
 
-// GetDomain получает домен сервера.
-func (ac *appConfig) GetDomain() string { return ac.ServerConfig.Domain }
+// Domain получает домен сервера.
+func (ac *appConfig) Domain() string { return ac.ServerConfig.Domain }
 
-// GetPort получает порт сервера.
-func (ac *appConfig) GetPort() string { return ac.ServerConfig.Port }
+// Port получает порт сервера.
+func (ac *appConfig) Port() string { return ac.ServerConfig.Port }
 
-// GetTimeout получает время отклика сервера.
-func (ac *appConfig) GetTimeout() time.Duration { return ac.ServerConfig.Timeout }
+// Timeout получает время отклика сервера.
+func (ac *appConfig) Timeout() time.Duration { return ac.ServerConfig.Timeout }
 
-// GetDSN получает строку для с данными для подключения к базе данных.
-func (ac *appConfig) GetDSN() string { return ac.DatabaseConfig.DSN }
+// DSN получает строку для с данными для подключения к базе данных.
+func (ac *appConfig) DSN() string { return ac.DatabaseConfig.DSN }
 
-// GetDBTimeout получает время отклика базы данных.
-func (ac *appConfig) GetDBTimeout() time.Duration { return ac.DatabaseConfig.Timeout }
+// DBTimeout получает время отклика базы данных.
+func (ac *appConfig) DBTimeout() time.Duration { return ac.DatabaseConfig.Timeout }
 
-// GetLoggerLevel получает уровень логирования.
-func (c *appConfig) GetLoggerLevel() string { return c.LoggerConfig.Level }
-
-// GetRussiaKrasnodar получает uri на события в месте.
-func (c *appConfig) GetRussiaKrasnodar() string { return c.EventsURIsConfig.RussiaKrasnodar }
+// LoggerLevel получает уровень логирования.
+func (c *appConfig) LoggerLevel() string { return c.LoggerConfig.Level }

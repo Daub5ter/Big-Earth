@@ -1,4 +1,4 @@
-FROM golang:1.21.1-alpine as builder
+FROM golang:1.22-alpine as builder
 
 RUN mkdir /app
 

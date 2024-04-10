@@ -1,4 +1,4 @@
-package database
+package postgres
 
 import (
 	"database/sql"
@@ -18,7 +18,7 @@ type db struct {
 func NewDB(conn *sql.DB, cfg config.DatabaseConfig) (Database, error) {
 	dbase := db{
 		conn:    conn,
-		timeout: cfg.GetDBTimeout(),
+		timeout: cfg.DBTimeout(),
 	}
 
 	if err := dbase.checkConnection(); err != nil {
@@ -65,6 +65,10 @@ func (db db) createTables() error {
 		return err
 	}
 
+	if _, err := db.conn.Exec(createEvents); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -80,6 +84,10 @@ func (db db) createIndexes() error {
 	}
 
 	if _, err := db.conn.Exec(indexVideos); err != nil {
+		return err
+	}
+
+	if _, err := db.conn.Exec(indexEvents); err != nil {
 		return err
 	}
 

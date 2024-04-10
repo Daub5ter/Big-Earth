@@ -3,10 +3,11 @@
 package server
 
 import (
+	"net/http"
+	"time"
+
 	"api-gateway/internal/handlers"
 	"api-gateway/internal/tools/config"
-	"net/http"
-
 	"api-gateway/internal/tools/server/viewer"
 
 	"github.com/go-chi/chi/v5"
@@ -18,13 +19,15 @@ import (
 type serv struct {
 	vr                viewer.Viewer
 	parsingConnection string
+	parsingTimeout    time.Duration
 }
 
 // NewServer создает новый сервер.
 func NewServer(cfg config.GRPCConfig) Server {
 	return serv{
 		vr:                viewer.NewParamsViewer(),
-		parsingConnection: cfg.GetGRPCParsingConnection(),
+		parsingConnection: cfg.GRPCParsingConnection(),
+		parsingTimeout:    cfg.GRPCParsingTimeout(),
 	}
 }
 
@@ -49,7 +52,7 @@ func (s serv) Routes() http.Handler {
 	//r.Get("/health", handlers.Health(s.database, s.pr))
 
 	// grpcparsing
-	r.Get("/parse/{country}/{city}", handlers.Parse(s.vr, s.parsingConnection))
+	r.Get("/parse/{country}/{city}", handlers.Parse(s.vr, s.parsingConnection, s.parsingTimeout))
 
 	return r
 }

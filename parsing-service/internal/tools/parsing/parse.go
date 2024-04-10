@@ -4,7 +4,6 @@ import (
 	"errors"
 
 	"parsing-service/internal/models"
-	"parsing-service/internal/tools/config"
 
 	"github.com/gocolly/colly"
 )
@@ -12,14 +11,19 @@ import (
 // Parser - структура парсера.
 type parser struct {
 	collector *colly.Collector
-	cfg       config.EventsURIs
 }
 
 // NewParsing - конструктор парсера.
-func NewParsing(cfg config.EventsURIs) Parsing {
+func NewParsing() Parsing {
+	collector := colly.NewCollector()
+
+	collector.AllowURLRevisit = true
+	collector.OnRequest(func(r *colly.Request) {
+		r.Headers.Set("User-Agent", "Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:47.0) Gecko/20100101 Firefox/47.0")
+	})
+
 	return parser{
-		collector: colly.NewCollector(),
-		cfg:       cfg,
+		collector: collector,
 	}
 }
 
@@ -27,7 +31,7 @@ func NewParsing(cfg config.EventsURIs) Parsing {
 var allocationEvent = 20
 
 // ParseEvent - парсит события.
-func (p parser) ParseEvent(place *models.Place) ([]*models.Event, error) {
+func (p parser) ParseEvent(place *models.Place, link string) ([]*models.Event, error) {
 	p.collector.AllowURLRevisit = true
 	p.collector.OnRequest(func(r *colly.Request) {
 		r.Headers.Set("User-Agent", "Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:47.0) Gecko/20100101 Firefox/47.0")
@@ -35,17 +39,8 @@ func (p parser) ParseEvent(place *models.Place) ([]*models.Event, error) {
 
 	switch place.Country {
 	case "Russia":
-		var urlPlace string
-
-		switch place.City {
-		case "Krasnodar":
-			urlPlace = p.cfg.GetRussiaKrasnodar()
-		default:
-			return nil, models.ErrBadRequest
-		}
-
 		events := make([]*models.Event, 0, allocationEvent)
-		err := p.parseEventRussia(urlPlace, &events)
+		err := p.parseRussia(link, &events)
 		if err != nil {
 			return nil, err
 		}

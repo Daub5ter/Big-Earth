@@ -23,7 +23,7 @@ func main() {
 	}
 
 	// Настройка логов.
-	logger.SetLogger(cfg.(config.LoggerConfig).GetLoggerLevel())
+	logger.SetLogger(cfg.(config.LoggerConfig).LoggerLevel())
 
 	log.Info("Запуск grpcparsing service")
 
@@ -31,10 +31,10 @@ func main() {
 	s := server.NewServer(cfg)
 
 	srv := &http.Server{
-		Addr:         fmt.Sprintf("%s:%s", cfg.(config.ServerConfig).GetDomain(), cfg.(config.ServerConfig).GetPort()),
+		Addr:         fmt.Sprintf("%s:%s", cfg.(config.ServerConfig).Domain(), cfg.(config.ServerConfig).Port()),
 		Handler:      s.Routes(),
-		ReadTimeout:  cfg.(config.ServerConfig).GetTimeout(),
-		WriteTimeout: cfg.(config.ServerConfig).GetTimeout(),
+		ReadTimeout:  cfg.(config.ServerConfig).Timeout(),
+		WriteTimeout: cfg.(config.ServerConfig).Timeout(),
 	}
 
 	// Запуск сервера.
