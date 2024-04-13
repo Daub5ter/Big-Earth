@@ -1,7 +1,7 @@
 server:
   domain:
   port: 50001
-  time_out: 30s
+  time_out: 10s
 database:
   timeout: 5s
 logger:

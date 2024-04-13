@@ -11,7 +11,6 @@ type PlaceInformation struct {
 	Text   string   `json:"text"`
 	Photos []string `json:"photos"`
 	Videos []string `json:"videos"`
-	Events []*Event `json:"events"`
 }
 
 // Event - событие в месте.

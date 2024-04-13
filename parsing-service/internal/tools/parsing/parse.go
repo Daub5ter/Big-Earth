@@ -2,6 +2,7 @@ package parsing
 
 import (
 	"errors"
+	"time"
 
 	"parsing-service/internal/models"
 
@@ -14,9 +15,10 @@ type parser struct {
 }
 
 // NewParsing - конструктор парсера.
-func NewParsing() Parsing {
+func NewParsing(timeout time.Duration) Parsing {
 	collector := colly.NewCollector()
 
+	collector.SetRequestTimeout(timeout)
 	collector.AllowURLRevisit = true
 	collector.OnRequest(func(r *colly.Request) {
 		r.Headers.Set("User-Agent", "Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:47.0) Gecko/20100101 Firefox/47.0")
@@ -30,8 +32,8 @@ func NewParsing() Parsing {
 // allocationEvent - количество выделяемого места для среза событий.
 var allocationEvent = 20
 
-// ParseEvent - парсит события.
-func (p parser) ParseEvent(place *models.Place, link string) ([]*models.Event, error) {
+// ParseEvents - парсит события.
+func (p parser) ParseEvents(place *models.Place, link string) ([]*models.Event, error) {
 	p.collector.AllowURLRevisit = true
 	p.collector.OnRequest(func(r *colly.Request) {
 		r.Headers.Set("User-Agent", "Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:47.0) Gecko/20100101 Firefox/47.0")

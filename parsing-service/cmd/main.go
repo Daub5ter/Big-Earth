@@ -32,7 +32,7 @@ func main() {
 	logger.SetLogger(cfg.(config.LoggerConfig).LoggerLevel())
 
 	// Создание парсера.
-	parse := parsing.NewParsing()
+	parse := parsing.NewParsing(cfg.(config.ServerConfig).Timeout())
 
 	// Соединение с БД.
 	conn := pgsql.ConnectToDB(cfg.(config.DatabaseConfig).DSN())

@@ -66,7 +66,8 @@ func (p *Parser) Parse(ctx context.Context, place *parsinggrpc.Place) (*parsingg
 	go func() {
 		defer close(events)
 
-		e, errParseEvent := p.parsing.ParseEvent(&pl, eventsLink)
+		e, errParseEvent := p.parsing.ParseEvents(&pl, eventsLink)
+		log.Debug("e:", e, "errParseEvent", errParseEvent)
 		if errParseEvent != nil {
 			events <- eventsWithError{events: nil, err: errParseEvent}
 			return
@@ -75,7 +76,7 @@ func (p *Parser) Parse(ctx context.Context, place *parsinggrpc.Place) (*parsingg
 		events <- eventsWithError{events: e, err: nil}
 	}()
 
-	data, err := p.database.GetPlaceInformation(&pl)
+	placeInformationWithoutEvents, err := p.database.GetPlaceInformation(&pl)
 	if err != nil {
 		if errors.Is(err, models.ErrNotFound) {
 			return nil, models.ErrNotFound
@@ -94,11 +95,19 @@ func (p *Parser) Parse(ctx context.Context, place *parsinggrpc.Place) (*parsingg
 			log.Warn("отмена контекста: перестаем ждать ответа от events")
 			return nil, nil
 		case e := <-events:
-			if e.err != nil {
-				return nil, err
+			var evs []*parsinggrpc.Event
+			placeInformation := parsinggrpc.PlaceInformation{
+				Text:   placeInformationWithoutEvents.Text,
+				Photos: placeInformationWithoutEvents.Photos,
+				Videos: placeInformationWithoutEvents.Videos,
+				Events: evs,
 			}
 
-			var evs []*parsinggrpc.Event
+			if e.err != nil {
+				log.Warn(fmt.Sprintf("не пришли события места: %v", e.err))
+				return &placeInformation, nil
+			}
+
 			for _, event := range e.events {
 				evs = append(evs,
 					&parsinggrpc.Event{
@@ -109,12 +118,9 @@ func (p *Parser) Parse(ctx context.Context, place *parsinggrpc.Place) (*parsingg
 				)
 			}
 
-			return &parsinggrpc.PlaceInformation{
-				Text:   data.Text,
-				Photos: data.Photos,
-				Videos: data.Videos,
-				Events: evs,
-			}, nil
+			placeInformation.Events = evs
+
+			return &placeInformation, nil
 		}
 	}
 }

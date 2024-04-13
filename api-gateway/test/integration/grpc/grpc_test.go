@@ -14,8 +14,8 @@ import (
 )
 
 func TestGRPC(t *testing.T) {
-	listenGRPC, err := net.Listen("tcp",
-		fmt.Sprintf("%s:%s", "", "50001"))
+	fmt.Println("запуск gRPC сервера...")
+	listenGRPC, err := net.Listen("tcp", fmt.Sprintf("%s:%s", "", "50001"))
 	if err != nil {
 		t.Errorf("ошибка прослушивания порта gRPC: %v", err)
 		return
@@ -32,6 +32,9 @@ func TestGRPC(t *testing.T) {
 		}
 	}()
 
+	time.Sleep(5 * time.Second)
+
+	fmt.Println("подключение к серверу...")
 	conn, err := grpc.Dial("localhost:50001", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		t.Errorf("не создается клиент grpc: %v", err)
@@ -44,6 +47,7 @@ func TestGRPC(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 
+	fmt.Println("отправка и проверка запросов...")
 	placeInformationFromServer, err := c.Parse(ctx, &parsing.Place{})
 	if err != nil {
 		t.Errorf("не отправляется запрос: %v", err)

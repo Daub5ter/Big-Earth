@@ -5,14 +5,12 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	log "log/slog"
 	"testing"
 
 	"parsing-service/internal/models"
 	"parsing-service/internal/tools/config"
 	"parsing-service/internal/tools/postgres"
 	"parsing-service/pkg/dbconn/pgsql"
-	"parsing-service/pkg/logger"
 
 	"github.com/brianvoe/gofakeit/v7"
 	tc "github.com/testcontainers/testcontainers-go/modules/compose"
@@ -20,37 +18,37 @@ import (
 )
 
 func TestPostgres(t *testing.T) {
-	logger.SetLogger("debug")
+	ctx := context.Background()
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	log.Debug("запуск контейнеров...")
-	var cs containers
-	compose, err := cs.runCompose(ctx)
+	t.Log("запуск контейнеров...")
+	cs := containers{
+		ctx: ctx,
+	}
+	compose, err := cs.runCompose()
 	if err != nil {
 		t.Errorf("ошибка запуска контейнеров: %v", err)
 		return
 	}
 
 	defer func() {
-		log.Debug("завершение работы контейеров...")
-		err = cs.downCompose(context.Background(), compose)
+		t.Log("завершение работы контейеров...")
+		err = cs.downCompose(compose)
 		if err != nil {
 			t.Errorf("ошибка завершения работы контейнеров: %v", err)
 			return
 		}
 	}()
 
-	log.Debug("настройка конфигурации...")
+	t.Log("настройка конфигурации...")
 	t.Setenv("DSN", "host=localhost port=5432 user=some_user password=some_password dbname=some_db sslmode=disable timezone=UTC connect_timeout=5")
+
 	cfg, err := config.NewConfig("postgres_test_config.yaml")
 	if err != nil {
 		t.Errorf("ошибка прочтения файла конфигруаций: %v", err)
 		return
 	}
 
-	log.Debug("подключение к базе данных postgresql...")
+	t.Log("подключение к базе данных postgresql...")
 	conn := pgsql.ConnectToDB(cfg.(config.DatabaseConfig).DSN())
 	if conn == nil {
 		t.Errorf("ошибка подключения к Postgres")
@@ -68,48 +66,49 @@ func TestPostgres(t *testing.T) {
 		conn: conn,
 	}
 
-	log.Debug("сохранение корректных данных...")
+	t.Log("сохранение корректных данных...")
 	err = db.saveCorrectData()
 	if err != nil {
 		t.Errorf("ошибка сохранения корректных данных: %v", err)
 		return
 	}
 
-	log.Debug("проверка корректных данных...")
+	t.Log("проверка корректных данных...")
 	err = db.readCorrectData(pgdb)
 	if err != nil {
 		t.Errorf("ошибка проверки корректных данных: %v", err)
 		return
 	}
 
-	log.Debug("проверка на обработку неккоректных данных...")
+	t.Log("проверка на обработку неккоректных данных...")
 	err = db.checkUnCorrectData(pgdb)
 	if err != nil {
 		t.Errorf("ошибка проверки на обработку неккоретных данных: %v", err)
 		return
 	}
 
-	log.Debug("удаление данных из таблиц...")
+	t.Log("удаление данных из таблиц...")
 	err = db.deleteAllData()
 	if err != nil {
 		t.Errorf("ошибка удаления данных из таблиц: %v", err)
 		return
 	}
 
-	log.Debug("сохранение большого количества данных...")
+	t.Log("сохранение большого количества данных...")
 	err = db.saveManyData()
 	if err != nil {
 		t.Errorf("ошибка сохранения большого количества данных: %v", err)
 		return
 	}
 
-	log.Debug("проверка корректности большого количества данных...")
+	t.Log("проверка корректности большого количества данных...")
 	err = db.countManyData()
 	if err != nil {
 		t.Errorf("ошибка прооверки большого количества данных: %v", err)
 		return
 	}
 
+	t.Log("закрытие соединения с базой данных...")
 	err = pgsql.CloseConnection(conn)
 	if err != nil {
 		t.Errorf("ошибка при завершении работы базы данных %v", err)
@@ -118,29 +117,31 @@ func TestPostgres(t *testing.T) {
 }
 
 // containers - структура для работы с запуском и завершенем контейнера.
-type containers struct{}
+type containers struct {
+	ctx context.Context
+}
 
 // runCompose запускает docker compose clickhouse
-func (cs containers) runCompose(ctx context.Context) (tc.ComposeStack, error) {
+func (cs containers) runCompose() (tc.ComposeStack, error) {
 	compose, err := tc.NewDockerComposeWith(tc.WithStackFiles("postgres_test.yml"),
 		tc.StackIdentifier("postgres_test_identifier"))
 	if err != nil {
 		return nil, err
 	}
 
-	err = compose.Up(ctx, tc.Wait(true))
+	err = compose.Up(cs.ctx, tc.Wait(true))
 	if err != nil {
 		return nil, err
 	}
 
-	compose.WaitForService("clickhouse_test", wait.ForLog("Awaiting socket connections on 0.0.0.0:5432"))
+	compose.WaitForService("postgres_test", wait.ForLog("Awaiting socket connections on 0.0.0.0:5432"))
 
 	return compose, nil
 }
 
 // downCompose выключает docker compose и удаляет образы.
-func (cs containers) downCompose(ctx context.Context, compose tc.ComposeStack) error {
-	return compose.Down(ctx, tc.RemoveImagesAll, tc.RemoveVolumes(true))
+func (cs containers) downCompose(compose tc.ComposeStack) error {
+	return compose.Down(cs.ctx, tc.RemoveImagesAll, tc.RemoveVolumes(true))
 }
 
 // database - структура для работы с базой данных.
@@ -304,6 +305,7 @@ func (db database) deleteAllData() error {
 	return nil
 }
 
+// count - число отправленных моделей в одну таблицу.
 var count = 5000
 
 // saveManyData сохраняет много значений.

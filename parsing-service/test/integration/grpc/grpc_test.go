@@ -9,13 +9,15 @@ import (
 
 	"parsing-service/internal/tools/grpc/parsing"
 
+	"github.com/brianvoe/gofakeit/v7"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
 
+// TestGRPC - основная функция теста gRPC сервера.
 func TestGRPC(t *testing.T) {
-	listenGRPC, err := net.Listen("tcp",
-		fmt.Sprintf("%s:%s", "", "50001"))
+	t.Log("запуск gRPC сервера...")
+	listenGRPC, err := net.Listen("tcp", fmt.Sprintf("%s:%s", "", "50001"))
 	if err != nil {
 		t.Errorf("ошибка прослушивания порта gRPC: %v", err)
 		return
@@ -32,6 +34,9 @@ func TestGRPC(t *testing.T) {
 		}
 	}()
 
+	time.Sleep(5 * time.Second)
+
+	t.Log("подключение к серверу...")
 	conn, err := grpc.Dial("localhost:50001", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		t.Errorf("не создается клиент grpc: %v", err)
@@ -44,6 +49,7 @@ func TestGRPC(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 
+	t.Log("отправка и проверка запросов...")
 	placeInformationFromServer, err := c.Parse(ctx, &parsing.Place{})
 	if err != nil {
 		t.Errorf("не отправляется запрос: %v", err)
@@ -64,27 +70,30 @@ func TestGRPC(t *testing.T) {
 		placeInformation.Events[0].Image != placeInformationFromServer.Events[0].Image ||
 		placeInformation.Events[0].Name != placeInformationFromServer.Events[0].Name {
 
-		t.Errorf("данные не совпадают")
+		t.Error("данные не совпадают, ожидалось:", &placeInformation, "получено:", placeInformationFromServer)
 		return
 	}
 }
 
+// parserMock - мок парсера.
 type parserMock struct {
 	parsing.UnimplementedParsingServer
 }
 
+// placeInformation - модель информации парсинга.
 var placeInformation = parsing.PlaceInformation{
-	Text:   "text",
-	Photos: []string{"photo"},
-	Videos: []string{"video"},
+	Text:   gofakeit.Word(),
+	Photos: []string{gofakeit.URL()},
+	Videos: []string{gofakeit.URL()},
 	Events: []*parsing.Event{
 		{
-			Name:  "name",
-			Image: "image",
-			Link:  "link",
+			Name:  gofakeit.Name(),
+			Image: gofakeit.URL(),
+			Link:  gofakeit.URL(),
 		}},
 }
 
+// Parse - мок функции парсинга данных.
 func (p parserMock) Parse(ctx context.Context, place *parsing.Place) (*parsing.PlaceInformation, error) {
 	return &placeInformation, nil
 }
