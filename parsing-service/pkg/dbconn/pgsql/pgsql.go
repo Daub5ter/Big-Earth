@@ -49,13 +49,3 @@ func ConnectToDB(dsn string) *sql.DB {
 		continue
 	}
 }
-
-// CloseConnection закрывает соединение с pgsql.
-func CloseConnection(db *sql.DB) error {
-	err := db.Close()
-	if err != nil {
-		return err
-	}
-
-	return nil
-}

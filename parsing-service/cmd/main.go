@@ -87,7 +87,7 @@ func main() {
 		log.Error(fmt.Sprintf("ошибка при завершении работы gRPC сервера %v", err))
 	}
 
-	err = pgsql.CloseConnection(conn)
+	err = conn.Close()
 	if err != nil {
 		log.Error(fmt.Sprintf("ошибка при завершении работы базы данных %v", err))
 	}

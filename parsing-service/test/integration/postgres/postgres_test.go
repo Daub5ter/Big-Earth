@@ -13,145 +13,66 @@ import (
 	"parsing-service/pkg/dbconn/pgsql"
 
 	"github.com/brianvoe/gofakeit/v7"
+	"github.com/stretchr/testify/suite"
 	tc "github.com/testcontainers/testcontainers-go/modules/compose"
 	"github.com/testcontainers/testcontainers-go/wait"
 )
 
-func TestPostgres(t *testing.T) {
-	ctx := context.Background()
-
-	t.Log("запуск контейнеров...")
-	cs := containers{
-		ctx: ctx,
-	}
-	compose, err := cs.runCompose()
-	if err != nil {
-		t.Errorf("ошибка запуска контейнеров: %v", err)
-		return
-	}
-
-	defer func() {
-		t.Log("завершение работы контейеров...")
-		err = cs.downCompose(compose)
-		if err != nil {
-			t.Errorf("ошибка завершения работы контейнеров: %v", err)
-			return
-		}
-	}()
-
-	t.Log("настройка конфигурации...")
-	t.Setenv("DSN", "host=localhost port=5432 user=some_user password=some_password dbname=some_db sslmode=disable timezone=UTC connect_timeout=5")
-
-	cfg, err := config.NewConfig("postgres_test_config.yaml")
-	if err != nil {
-		t.Errorf("ошибка прочтения файла конфигруаций: %v", err)
-		return
-	}
-
-	t.Log("подключение к базе данных postgresql...")
-	conn := pgsql.ConnectToDB(cfg.(config.DatabaseConfig).DSN())
-	if conn == nil {
-		t.Errorf("ошибка подключения к Postgres")
-		return
-	}
-
-	pgdb, err := postgres.NewDB(conn, cfg)
-	if err != nil {
-		t.Errorf("ошибка подключения к базе данных: %v", err)
-		return
-	}
-
-	db := database{
-		ctx:  ctx,
-		conn: conn,
-	}
-
-	t.Log("сохранение корректных данных...")
-	err = db.saveCorrectData()
-	if err != nil {
-		t.Errorf("ошибка сохранения корректных данных: %v", err)
-		return
-	}
-
-	t.Log("проверка корректных данных...")
-	err = db.readCorrectData(pgdb)
-	if err != nil {
-		t.Errorf("ошибка проверки корректных данных: %v", err)
-		return
-	}
-
-	t.Log("проверка на обработку неккоректных данных...")
-	err = db.checkUnCorrectData(pgdb)
-	if err != nil {
-		t.Errorf("ошибка проверки на обработку неккоретных данных: %v", err)
-		return
-	}
-
-	t.Log("удаление данных из таблиц...")
-	err = db.deleteAllData()
-	if err != nil {
-		t.Errorf("ошибка удаления данных из таблиц: %v", err)
-		return
-	}
-
-	t.Log("сохранение большого количества данных...")
-	err = db.saveManyData()
-	if err != nil {
-		t.Errorf("ошибка сохранения большого количества данных: %v", err)
-		return
-	}
-
-	t.Log("проверка корректности большого количества данных...")
-	err = db.countManyData()
-	if err != nil {
-		t.Errorf("ошибка прооверки большого количества данных: %v", err)
-		return
-	}
-
-	t.Log("закрытие соединения с базой данных...")
-	err = pgsql.CloseConnection(conn)
-	if err != nil {
-		t.Errorf("ошибка при завершении работы базы данных %v", err)
-		return
-	}
+// ClientSuite - структура для тестов.
+type ClientSuite struct {
+	suite.Suite
+	compose  tc.ComposeStack
+	ctx      context.Context
+	cfg      config.DatabaseConfig
+	conn     *sql.DB
+	database postgres.Database
 }
 
-// containers - структура для работы с запуском и завершенем контейнера.
-type containers struct {
-	ctx context.Context
-}
-
-// runCompose запускает docker compose clickhouse
-func (cs containers) runCompose() (tc.ComposeStack, error) {
-	compose, err := tc.NewDockerComposeWith(tc.WithStackFiles("postgres_test.yml"),
+// SetupSuite настраивает тесты
+// (включается перед тестами) .
+func (c *ClientSuite) SetupSuite() {
+	var err error
+	c.compose, err = tc.NewDockerComposeWith(tc.WithStackFiles("postgres_test.yml"),
 		tc.StackIdentifier("postgres_test_identifier"))
-	if err != nil {
-		return nil, err
+	c.NoError(err)
+
+	c.ctx = context.Background()
+
+	err = c.compose.Up(c.ctx, tc.Wait(true))
+	c.NoError(err)
+
+	c.compose.WaitForService("postgres_test", wait.ForLog("Awaiting socket connections on 0.0.0.0:5432"))
+
+	c.Suite.T().Setenv("DSN", "host=localhost port=5432 user=some_user password=some_password dbname=some_db sslmode=disable timezone=UTC connect_timeout=5")
+
+	c.cfg, err = config.NewConfig("postgres_test_config.yaml")
+	c.NoError(err)
+
+	c.conn = pgsql.ConnectToDB(c.cfg.DSN())
+	if c.conn == nil {
+		c.NoError(fmt.Errorf("ошибка подключения к Postgres"))
 	}
 
-	err = compose.Up(cs.ctx, tc.Wait(true))
-	if err != nil {
-		return nil, err
-	}
+	c.database, err = postgres.NewDB(c.conn, c.cfg)
+	c.NoError(err)
 
-	compose.WaitForService("postgres_test", wait.ForLog("Awaiting socket connections on 0.0.0.0:5432"))
-
-	return compose, nil
+	c.T().Log("Postgres запущен")
 }
 
-// downCompose выключает docker compose и удаляет образы.
-func (cs containers) downCompose(compose tc.ComposeStack) error {
-	return compose.Down(cs.ctx, tc.RemoveImagesAll, tc.RemoveVolumes(true))
+// TearDownSuite завершает тесты
+// (включается после тестами) .
+func (c *ClientSuite) TearDownSuite() {
+	c.NoError(c.conn.Close())
+	c.NoError(c.compose.Down(c.ctx, tc.RemoveImagesAll, tc.RemoveVolumes(true)))
 }
 
-// database - структура для работы с базой данных.
-type database struct {
-	ctx  context.Context
-	conn *sql.DB
+// TestPostgres запускает тесты.
+func TestPostgres(t *testing.T) {
+	suite.Run(t, new(ClientSuite))
 }
 
-// saveCorrectData сохраняет корректные данные.
-func (db database) saveCorrectData() error {
+// TestA_CorrectData проверяет работу с корректными сообщениями.
+func (c *ClientSuite) TestA_CorrectData() {
 	var placeID int
 
 	query := `insert into place(
@@ -159,157 +80,128 @@ func (db database) saveCorrectData() error {
                 city) 
 				values ($1, $2)
 				returning id`
-	err := db.conn.QueryRowContext(db.ctx, query,
+	err := c.conn.QueryRowContext(c.ctx, query,
 		country,
 		city,
 	).Scan(&placeID)
-	if err != nil {
-		return err
-	}
+	c.NoError(err)
 
 	query = `insert into texts(
         		place_id,
                 text_place) 
 				values ($1, $2)`
-	_, err = db.conn.ExecContext(db.ctx, query,
+	_, err = c.conn.ExecContext(c.ctx, query,
 		placeID,
 		text)
-	if err != nil {
-		return err
-	}
+	c.NoError(err)
 
 	query = `insert into photos(
         		place_id,
                 link) 
 				values ($1, $2)`
-	_, err = db.conn.ExecContext(db.ctx, query,
+	_, err = c.conn.ExecContext(c.ctx, query,
 		placeID,
 		photoLink)
-	if err != nil {
-		return err
-	}
+	c.NoError(err)
 
 	query = `insert into videos(
         		place_id,
                 link) 
 				values ($1, $2)`
-	_, err = db.conn.ExecContext(db.ctx, query,
+	_, err = c.conn.ExecContext(c.ctx, query,
 		placeID,
 		videoLink)
-	if err != nil {
-		return err
-	}
+	c.NoError(err)
 
 	query = `insert into events(
         		place_id,
                 link) 
 				values ($1, $2)`
-	_, err = db.conn.ExecContext(db.ctx, query,
+	_, err = c.conn.ExecContext(c.ctx, query,
 		placeID,
 		eventsLink)
-	if err != nil {
-		return err
-	}
+	c.NoError(err)
 
-	return nil
-}
-
-// readCorrectData читает корректные данные.
-func (db database) readCorrectData(pgdb postgres.Database) error {
 	place := models.Place{
 		Country: country,
 		City:    city,
 	}
 
-	placeInformation, err := pgdb.GetPlaceInformation(&place)
+	placeInformation, err := c.database.GetPlaceInformation(&place)
+	c.NoError(err)
 
-	if err != nil {
-		return err
+	if !c.Equal(text, placeInformation.Text) {
+		c.NoError(fmt.Errorf("неверные данные таблицы texts получены из базы данных; ожидалось: %s, получено: %s",
+			text, placeInformation.Text))
 	}
 
-	if text != placeInformation.Text {
-		return fmt.Errorf("неверные данные таблицы texts получены из базы данных; ожидалось: %s, получено: %s",
-			text, placeInformation.Text)
+	if !c.Equal(photoLink, placeInformation.Photos[0]) {
+		c.NoError(fmt.Errorf("неверные данные таблицы photos получены из базы данных; ожидалось: %s, получено: %s",
+			photoLink, placeInformation.Photos[0]))
+	}
+
+	if !c.Equal(videoLink, placeInformation.Videos[0]) {
+		c.NoError(fmt.Errorf("неверные данные таблицы videos получены из базы данных; ожидалось: %s, получено: %s",
+			videoLink, placeInformation.Videos[0]))
 	}
 
 	if len(placeInformation.Photos) == 0 {
-		return fmt.Errorf("нет данных, ожидалась минимум 1 из таблицы photos")
-	}
-	if photoLink != placeInformation.Photos[0] {
-		return fmt.Errorf("неверные данные таблицы photos получены из базы данных; ожидалось: %s, получено: %s",
-			photoLink, placeInformation.Photos[0])
+		c.NoError(fmt.Errorf("нет данных, ожидалась минимум 1 из таблицы photos"))
 	}
 
 	if len(placeInformation.Videos) == 0 {
-		return fmt.Errorf("нет данных, ожидалась минимум 1 из таблицы videos")
-	}
-	if videoLink != placeInformation.Videos[0] {
-		return fmt.Errorf("неверные данные таблицы videos получены из базы данных; ожидалось: %s, получено: %s",
-			videoLink, placeInformation.Videos[0])
+		c.NoError(fmt.Errorf("нет данных, ожидалась минимум 1 из таблицы videos"))
 	}
 
-	eventsLinkFromDB, err := pgdb.GetEventsLink(&place)
-	if err != nil {
-		return err
+	eventsLinkFromDB, err := c.database.GetEventsLink(&place)
+	c.NoError(err)
+
+	if !c.Equal(eventsLink, eventsLinkFromDB) {
+		c.NoError(fmt.Errorf("неверные данные таблицы events получены из базы данных; ожидалось: %s, получено: %s",
+			eventsLink, eventsLinkFromDB))
 	}
 
-	if eventsLink != eventsLinkFromDB {
-		return fmt.Errorf("неверные данные таблицы events получены из базы данных; ожидалось: %s, получено: %s",
-			eventsLink, eventsLinkFromDB)
-	}
+	c.T().Log("корректные данные записываются и читаются верно")
 
-	return nil
+	_, err = c.conn.ExecContext(c.ctx, "TRUNCATE TABLE texts CASCADE")
+	c.NoError(err)
+
+	_, err = c.conn.ExecContext(c.ctx, "TRUNCATE TABLE photos CASCADE")
+	c.NoError(err)
+
+	_, err = c.conn.ExecContext(c.ctx, "TRUNCATE TABLE videos CASCADE")
+	c.NoError(err)
+
+	_, err = c.conn.ExecContext(c.ctx, "TRUNCATE TABLE events CASCADE")
+	c.NoError(err)
+
+	_, err = c.conn.ExecContext(c.ctx, "TRUNCATE TABLE place CASCADE")
+	c.NoError(err)
 }
 
-// checkUnCorrectData обрабатывает некорректные данные (проверяет на ошибки).
-func (db database) checkUnCorrectData(pgdb postgres.Database) error {
+// TestB_UnCorrectData проверяет работу с некорректными сообщениями.
+func (c *ClientSuite) TestB_UnCorrectData() {
 	place := models.Place{}
 
-	if _, err := pgdb.GetPlaceInformation(&place); err != nil {
+	if _, err := c.database.GetPlaceInformation(&place); err != nil {
 		if !errors.Is(err, models.ErrEmptyData) {
-			return err
+			c.NoError(err)
 		}
 	}
 
-	if _, err := pgdb.GetEventsLink(&place); err != nil {
+	if _, err := c.database.GetEventsLink(&place); err != nil {
 		if !errors.Is(err, models.ErrEmptyData) {
-			return err
+			c.NoError(err)
 		}
 	}
 
-	return nil
+	c.T().Log("некорректные данные обрабатываются верно")
 }
 
-// deleteAllData удаляет все данные из таблиц.
-func (db database) deleteAllData() error {
-	if _, err := db.conn.ExecContext(db.ctx, "TRUNCATE TABLE texts CASCADE"); err != nil {
-		return err
-	}
+// TestC_ManyData проверяет работу с большим количеством сообщений.
+func (c *ClientSuite) TestC_ManyData() {
+	var count = 5000
 
-	if _, err := db.conn.ExecContext(db.ctx, "TRUNCATE TABLE photos CASCADE"); err != nil {
-		return err
-	}
-
-	if _, err := db.conn.ExecContext(db.ctx, "TRUNCATE TABLE videos CASCADE"); err != nil {
-		return err
-	}
-
-	if _, err := db.conn.ExecContext(db.ctx, "TRUNCATE TABLE events CASCADE"); err != nil {
-		return err
-	}
-
-	if _, err := db.conn.ExecContext(db.ctx, "TRUNCATE TABLE place CASCADE"); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// count - число отправленных моделей в одну таблицу.
-var count = 5000
-
-// saveManyData сохраняет много значений.
-func (db database) saveManyData() error {
 	for i := 1; i <= count; i++ {
 		var placeID int
 
@@ -318,117 +210,92 @@ func (db database) saveManyData() error {
                 city) 
 				values ($1, $2)
 				returning id`
-		err := db.conn.QueryRowContext(db.ctx, query,
+		err := c.conn.QueryRowContext(c.ctx, query,
 			gofakeit.Country(),
 			gofakeit.City(),
 		).Scan(&placeID)
-		if err != nil {
-			return err
-		}
+		c.NoError(err)
 
 		query = `insert into texts(
         		place_id,
                 text_place) 
 				values ($1, $2)`
-		_, err = db.conn.ExecContext(db.ctx, query,
+		_, err = c.conn.ExecContext(c.ctx, query,
 			placeID,
 			gofakeit.Word())
-		if err != nil {
-			return err
-		}
+		c.NoError(err)
 
 		query = `insert into photos(
         		place_id,
                 link) 
 				values ($1, $2)`
-		_, err = db.conn.ExecContext(db.ctx, query,
+		_, err = c.conn.ExecContext(c.ctx, query,
 			placeID,
 			gofakeit.URL())
-		if err != nil {
-			return err
-		}
+		c.NoError(err)
 
 		query = `insert into videos(
         		place_id,
                 link) 
 				values ($1, $2)`
-		_, err = db.conn.ExecContext(db.ctx, query,
+		_, err = c.conn.ExecContext(c.ctx, query,
 			placeID,
 			gofakeit.URL())
-		if err != nil {
-			return err
-		}
+		c.NoError(err)
 
 		query = `insert into events(
         		place_id,
                 link) 
 				values ($1, $2)`
-		_, err = db.conn.ExecContext(db.ctx, query,
+		_, err = c.conn.ExecContext(c.ctx, query,
 			placeID,
 			gofakeit.URL())
-		if err != nil {
-			return err
-		}
+		c.NoError(err)
 	}
 
-	return nil
-}
-
-// countManyData считает много значений; если не совпадает, выдает ошикую
-func (db database) countManyData() error {
 	var countFromDB int
 
-	row := db.conn.QueryRowContext(db.ctx, "SELECT COUNT(*) FROM place")
+	row := c.conn.QueryRowContext(c.ctx, "SELECT COUNT(*) FROM place")
 	err := row.Scan(&countFromDB)
-	if err != nil {
-		return err
-	}
+	c.NoError(err)
 	if count != countFromDB {
-		return fmt.Errorf("пришло неверное количество данных таблицы place, требовалось: %v, получили: %v",
-			count, countFromDB)
+		c.NoError(fmt.Errorf("пришло неверное количество данных таблицы place, требовалось: %v, получили: %v",
+			count, countFromDB))
 	}
 
-	row = db.conn.QueryRowContext(db.ctx, "SELECT COUNT(*) FROM texts")
+	row = c.conn.QueryRowContext(c.ctx, "SELECT COUNT(*) FROM texts")
 	err = row.Scan(&countFromDB)
-	if err != nil {
-		return err
-	}
+	c.NoError(err)
 	if count != countFromDB {
-		return fmt.Errorf("пришло неверное количество данных таблицы texts, требовалось: %v, получили: %v",
-			count, countFromDB)
+		c.NoError(fmt.Errorf("пришло неверное количество данных таблицы texts, требовалось: %v, получили: %v",
+			count, countFromDB))
 	}
 
-	row = db.conn.QueryRowContext(db.ctx, "SELECT COUNT(*) FROM photos")
+	row = c.conn.QueryRowContext(c.ctx, "SELECT COUNT(*) FROM photos")
 	err = row.Scan(&countFromDB)
-	if err != nil {
-		return err
-	}
+	c.NoError(err)
 	if count != countFromDB {
-		return fmt.Errorf("пришло неверное количество данных таблицы photos, требовалось: %v, получили: %v",
-			count, countFromDB)
+		c.NoError(fmt.Errorf("пришло неверное количество данных таблицы photos, требовалось: %v, получили: %v",
+			count, countFromDB))
 	}
 
-	row = db.conn.QueryRowContext(db.ctx, "SELECT COUNT(*) FROM videos")
+	row = c.conn.QueryRowContext(c.ctx, "SELECT COUNT(*) FROM videos")
 	err = row.Scan(&countFromDB)
-	if err != nil {
-		return err
-	}
+	c.NoError(err)
 	if count != countFromDB {
-		return fmt.Errorf("пришло неверное количество данных таблицы videos, требовалось: %v, получили: %v",
-			count, countFromDB)
+		c.NoError(fmt.Errorf("пришло неверное количество данных таблицы videos, требовалось: %v, получили: %v",
+			count, countFromDB))
 	}
 
-	row = db.conn.QueryRowContext(db.ctx, "SELECT COUNT(*) FROM events")
+	row = c.conn.QueryRowContext(c.ctx, "SELECT COUNT(*) FROM events")
 	err = row.Scan(&countFromDB)
-	if err != nil {
-		return err
-	}
+	c.NoError(err)
 	if count != countFromDB {
-		return fmt.Errorf("пришло неверное количество данных таблицы events, требовалось: %v, получили: %v",
-			count, countFromDB)
+		c.NoError(fmt.Errorf("пришло неверное количество данных таблицы events, требовалось: %v, получили: %v",
+			count, countFromDB))
 	}
 
-	return nil
+	c.T().Log("большое количество данных верно сохраняются и читаются")
 }
 
 // country, city, text, photoLink, videoLink, eventsLink

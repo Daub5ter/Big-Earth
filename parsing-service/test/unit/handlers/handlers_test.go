@@ -11,57 +11,60 @@ import (
 	parsinggrpc "parsing-service/internal/tools/grpc/parsing"
 
 	"github.com/brianvoe/gofakeit/v7"
+	"github.com/stretchr/testify/suite"
 )
 
-// TestHandler - основная функция для теста обработчиков.
-func TestHandler(t *testing.T) {
-	err := parseHandler()
-	if err != nil {
-		t.Error(err)
-		return
-	}
+// ClientSuite - структура для тестов.
+type ClientSuite struct {
+	suite.Suite
+	ctx context.Context
+}
+
+// SetupSuite настраивает тесты
+// (включается перед тестами) .
+func (c *ClientSuite) SetupSuite() {
+	c.ctx = context.Background()
+}
+
+// TestHandlers запускает тесты.
+func TestHandlers(t *testing.T) {
+	suite.Run(t, new(ClientSuite))
 }
 
 // parseHandler - запуск функций обработчика parse.
-func parseHandler() error {
-	ctx := context.Background()
+func (c *ClientSuite) TestParseHandler() {
 	var db databaseMock
 	var parse parsingMock
 
 	parser := handlers.NewParser(db, parse)
 
-	fmt.Println("отправляем неккоректные данные...")
-	_, err := parser.Parse(ctx, &parsinggrpc.Place{})
+	_, err := parser.Parse(c.ctx, &parsinggrpc.Place{})
 	if err != nil {
 		if !errors.Is(err, models.ErrEmptyData) {
-			return fmt.Errorf("ошибка при отправке нккоректного запроса: %v", err)
+			c.NoError(fmt.Errorf("ошибка при отправке нккоректного запроса: %v", err))
 		}
 	}
 
-	fmt.Println("отправляем корректные данные...")
-	_, err = parser.Parse(ctx,
+	_, err = parser.Parse(c.ctx,
 		&parsinggrpc.Place{
 			Country: gofakeit.Country(),
 			City:    gofakeit.City(),
 		})
-	if err != nil {
-		return fmt.Errorf("ошибка при отправке корректных данных: %v", err)
-	}
+	c.NoError(err)
 
-	fmt.Println("проверка на получение ошибки от событий места...")
 	parse.returnErr = true
-	_, err = parser.Parse(ctx,
+	_, err = parser.Parse(c.ctx,
 		&parsinggrpc.Place{
 			Country: gofakeit.Country(),
 			City:    gofakeit.City(),
 		})
 	if err != nil {
 		if !errors.Is(err, someErr) {
-			return fmt.Errorf("ошибка при получении ошибки; моя ошибка: %v, полученная: %v", someErr, err)
+			c.NoError(fmt.Errorf("ошибка при получении ошибки; моя ошибка: %v, полученная: %v", someErr, err))
 		}
 	}
 
-	return nil
+	c.T().Log("обработчик parse работает")
 }
 
 // databaseMock - мок базы данных.
