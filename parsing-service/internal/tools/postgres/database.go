@@ -21,6 +21,10 @@ func NewDB(conn *sql.DB, cfg config.DatabaseConfig) (Database, error) {
 		timeout: cfg.DBTimeout(),
 	}
 
+	conn.SetMaxOpenConns(100)
+	conn.SetMaxIdleConns(10)
+	conn.SetConnMaxLifetime(time.Hour)
+
 	if err := dbase.checkConnection(); err != nil {
 		return nil, err
 	}
