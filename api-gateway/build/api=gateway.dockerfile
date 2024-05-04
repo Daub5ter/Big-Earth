@@ -1,4 +1,4 @@
-FROM golang:1.21.1-alpine as builder
+FROM golang:1.22-alpine as builder
 
 RUN mkdir /app
 
@@ -15,11 +15,5 @@ FROM alpine:latest
 RUN mkdir /app
 
 COPY --from=builder /app/api-gateway /app
-
-COPY /build/cert.pem /app/cert.pem
-
-COPY /build/key.pem /app/key.pem
-
-COPY /configs/api-gateway-config.yaml /app/api-gateway-config.yaml
 
 CMD [ "app/api-gateway" ]

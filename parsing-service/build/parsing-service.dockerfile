@@ -1,4 +1,4 @@
-FROM golang:1.21.1-alpine as builder
+FROM golang:1.22-alpine as builder
 
 RUN mkdir /app
 
@@ -16,10 +16,7 @@ RUN mkdir /app
 
 COPY --from=builder /app/parsing-service /app
 
-COPY /build/cert.pem /app/cert.pem
-
-COPY /build/key.pem /app/key.pem
-
-COPY /configs/parsing-config.yaml /app/parsing-config.yaml
-
 CMD [ "app/parsing-service" ]
+
+
+

@@ -2,9 +2,9 @@
 // versions:
 // 	protoc-gen-go v1.28.1
 // 	protoc        v3.12.4
-// source: parse.protos
+// source: parse.proto
 
-package grpcparsing
+package parsing
 
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
@@ -233,8 +233,8 @@ var file_parse_proto_rawDesc = []byte{
 	0x34, 0x0a, 0x05, 0x50, 0x61, 0x72, 0x73, 0x65, 0x12, 0x0e, 0x2e, 0x70, 0x61, 0x72, 0x73, 0x69,
 	0x6e, 0x67, 0x2e, 0x50, 0x6c, 0x61, 0x63, 0x65, 0x1a, 0x19, 0x2e, 0x70, 0x61, 0x72, 0x73, 0x69,
 	0x6e, 0x67, 0x2e, 0x50, 0x6c, 0x61, 0x63, 0x65, 0x49, 0x6e, 0x66, 0x6f, 0x72, 0x6d, 0x61, 0x74,
-	0x69, 0x6f, 0x6e, 0x22, 0x00, 0x42, 0x0b, 0x5a, 0x09, 0x2f, 0x68, 0x61, 0x6e, 0x64, 0x6c, 0x65,
-	0x72, 0x73, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x69, 0x6f, 0x6e, 0x22, 0x00, 0x42, 0x0a, 0x5a, 0x08, 0x2f, 0x70, 0x61, 0x72, 0x73, 0x69, 0x6e,
+	0x67, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -251,14 +251,14 @@ func file_parse_proto_rawDescGZIP() []byte {
 
 var file_parse_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_parse_proto_goTypes = []interface{}{
-	(*Place)(nil),            // 0: grpcparsing.Place
-	(*PlaceInformation)(nil), // 1: grpcparsing.PlaceInformation
-	(*Event)(nil),            // 2: grpcparsing.Event
+	(*Place)(nil),            // 0: parsing.Place
+	(*PlaceInformation)(nil), // 1: parsing.PlaceInformation
+	(*Event)(nil),            // 2: parsing.Event
 }
 var file_parse_proto_depIdxs = []int32{
-	2, // 0: grpcparsing.PlaceInformation.events:type_name -> grpcparsing.Event
-	0, // 1: grpcparsing.Parsing.Parse:input_type -> grpcparsing.Place
-	1, // 2: grpcparsing.Parsing.Parse:output_type -> grpcparsing.PlaceInformation
+	2, // 0: parsing.PlaceInformation.events:type_name -> parsing.Event
+	0, // 1: parsing.Parsing.Parse:input_type -> parsing.Place
+	1, // 2: parsing.Parsing.Parse:output_type -> parsing.PlaceInformation
 	2, // [2:3] is the sub-list for method output_type
 	1, // [1:2] is the sub-list for method input_type
 	1, // [1:1] is the sub-list for extension type_name

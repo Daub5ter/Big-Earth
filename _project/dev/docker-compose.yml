@@ -1,24 +1,31 @@
 version: '3'
 
 services:
-
   api-gateway:
+    container_name: api-gateway
     build:
       context: ./../../api-gateway
       dockerfile: ./../api-gateway/build/api=gateway.dockerfile
     ports:
       - "443:443"
+    volumes:
+      - ./../../api-gateway/build/tls:/tls
+      - ./../../api-gateway/configs/:/configs
     restart: always
     deploy:
       mode: replicated
       replicas: 1
 
   parsing-service:
+    container_name: parsing
     build:
       context: ./../../parsing-service
       dockerfile: ./../parsing-service/build/parsing-service.dockerfile
     ports:
-      - "4430:443"
+      - "50001:50001"
+    volumes:
+      - ./../../parsing-service/build/tls:/tls
+      - ./../../parsing-service/configs/:/configs
     restart: always
     deploy:
       mode: replicated
@@ -27,6 +34,7 @@ services:
       DSN: ${DSN}
 
   postgres:
+    container_name: database-postgres
     image: 'postgres:16.0'
     ports:
       - "5432:5432"

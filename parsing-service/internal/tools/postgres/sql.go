@@ -1,4 +1,4 @@
-package database
+package postgres
 
 // createPlace, createTexts, createPhotos, createVideos
 // - команды создания таблиц базы данных, если они отсутсвуют.
@@ -27,6 +27,12 @@ const (
 							place_id INT REFERENCES place(id),
 							link VARCHAR(255)
 						);`
+
+	createEvents = `CREATE TABLE IF NOT EXISTS events
+						(
+							place_id INT REFERENCES place(id),
+							link VARCHAR(255)
+						);`
 )
 
 // indexTexts, indexPhotos, indexVideos
@@ -42,6 +48,10 @@ const (
 
 	indexVideos = `CREATE INDEX IF NOT EXISTS idx_videos 
 					ON videos 
+					USING HASH (place_id)`
+
+	indexEvents = `CREATE INDEX IF NOT EXISTS idx_events 
+					ON events 
 					USING HASH (place_id)`
 )
 
@@ -63,4 +73,8 @@ const (
 	selectVideos = `SELECT link
 						FROM videos
 						WHERE place_id = $1`
+
+	selectEventsLink = `SELECT link
+							FROM events
+							WHERE place_id = $1`
 )

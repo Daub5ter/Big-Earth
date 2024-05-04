@@ -20,12 +20,13 @@ type serverConfig struct {
 	Timeout time.Duration `yaml:"timeout"`
 }
 
-type connections struct {
-	Parsing string `yaml:"parsing"`
+type parsing struct {
+	Connection string        `yaml:"connection"`
+	Timeout    time.Duration `yaml:"timeout"`
 }
 
 type gRPCConfig struct {
-	Connections connections `yaml:"connections"`
+	Parsing parsing `yaml:"parsing"`
 }
 
 // loggerConfig - структура конфиграции логов.
@@ -51,17 +52,20 @@ func NewConfig(configPath string) (Config, error) {
 	return &cfg, nil
 }
 
-// GetDomain получает домен сервера.
-func (ac *appConfig) GetDomain() string { return ac.ServerConfig.Domain }
+// Domain получает домен сервера.
+func (ac *appConfig) Domain() string { return ac.ServerConfig.Domain }
 
-// GetPort получает порт сервера.
-func (ac *appConfig) GetPort() string { return ac.ServerConfig.Port }
+// Port получает порт сервера.
+func (ac *appConfig) Port() string { return ac.ServerConfig.Port }
 
-// GetTimeout получает время отклика сервера.
-func (ac *appConfig) GetTimeout() time.Duration { return ac.ServerConfig.Timeout }
+// Timeout получает время отклика сервера.
+func (ac *appConfig) Timeout() time.Duration { return ac.ServerConfig.Timeout }
 
-// GetLoggerLevel получает уровень логирования.
-func (c *appConfig) GetLoggerLevel() string { return c.LoggerConfig.Level }
+// LoggerLevel получает уровень логирования.
+func (c *appConfig) LoggerLevel() string { return c.LoggerConfig.Level }
 
-// GetGRPCParsingConnection - получает ссылку для подключения к сервису парсинга.
-func (c *appConfig) GetGRPCParsingConnection() string { return c.GRPCConfig.Connections.Parsing }
+// GRPCParsingConnection - получает ссылку для подключения к сервису парсинга.
+func (c *appConfig) GRPCParsingConnection() string { return c.GRPCConfig.Parsing.Connection }
+
+// GRPCParsingTimeout - получает таймаут для отклика сервиса парсинга.
+func (c *appConfig) GRPCParsingTimeout() time.Duration { return c.GRPCConfig.Parsing.Timeout }

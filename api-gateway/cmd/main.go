@@ -16,14 +16,14 @@ import (
 
 func main() {
 	// Получение конфига.
-	cfg, err := config.NewConfig("./app/api-gateway-config.yaml")
+	cfg, err := config.NewConfig("./configs/api-gateway-config.yaml")
 	if err != nil {
 		log.Error(fmt.Sprintf("ошибка прочтения файла конфигруаций: %v", err))
 		return
 	}
 
 	// Настройка логов.
-	logger.SetLogger(cfg.(config.LoggerConfig).GetLoggerLevel())
+	logger.SetLogger(cfg.(config.LoggerConfig).LoggerLevel())
 
 	log.Info("Запуск grpcparsing service")
 
@@ -31,18 +31,18 @@ func main() {
 	s := server.NewServer(cfg)
 
 	srv := &http.Server{
-		Addr:         fmt.Sprintf("%s:%s", cfg.(config.ServerConfig).GetDomain(), cfg.(config.ServerConfig).GetPort()),
+		Addr:         fmt.Sprintf("%s:%s", cfg.(config.ServerConfig).Domain(), cfg.(config.ServerConfig).Port()),
 		Handler:      s.Routes(),
-		ReadTimeout:  cfg.(config.ServerConfig).GetTimeout(),
-		WriteTimeout: cfg.(config.ServerConfig).GetTimeout(),
+		ReadTimeout:  cfg.(config.ServerConfig).Timeout(),
+		WriteTimeout: cfg.(config.ServerConfig).Timeout(),
 	}
 
 	// Запуск сервера.
 	go func() {
-		err = srv.ListenAndServeTLS("./app/cert.pem", "./app/key.pem")
+		err = srv.ListenAndServeTLS("./tls/cert.pem", "./tls/key.pem")
 		if err != nil {
 			log.Error(fmt.Sprintf("ошибка запуска сервера: %v", err))
-			return
+			os.Exit(1)
 		}
 	}()
 

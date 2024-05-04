@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package parsing;
 
-option go_package = "/handlers";
+option go_package = "/parsing";
 
 service Parsing {
   rpc Parse(Place) returns (PlaceInformation) {}

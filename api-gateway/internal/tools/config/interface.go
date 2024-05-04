@@ -11,16 +11,17 @@ type Config interface {
 
 // ServerConfig - API конфига сервера.
 type ServerConfig interface {
-	GetDomain() string
-	GetPort() string
-	GetTimeout() time.Duration
+	Domain() string
+	Port() string
+	Timeout() time.Duration
 }
 
 type GRPCConfig interface {
-	GetGRPCParsingConnection() string
+	GRPCParsingConnection() string
+	GRPCParsingTimeout() time.Duration
 }
 
 // LoggerConfig - конфигурация логов приложения.
 type LoggerConfig interface {
-	GetLoggerLevel() string
+	LoggerLevel() string
 }
