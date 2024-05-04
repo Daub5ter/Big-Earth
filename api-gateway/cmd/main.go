@@ -16,7 +16,7 @@ import (
 
 func main() {
 	// Получение конфига.
-	cfg, err := config.NewConfig("./app/api-gateway-config.yaml")
+	cfg, err := config.NewConfig("./configs/api-gateway-config.yaml")
 	if err != nil {
 		log.Error(fmt.Sprintf("ошибка прочтения файла конфигруаций: %v", err))
 		return
@@ -39,10 +39,10 @@ func main() {
 
 	// Запуск сервера.
 	go func() {
-		err = srv.ListenAndServeTLS("./app/cert.pem", "./app/key.pem")
+		err = srv.ListenAndServeTLS("./tls/cert.pem", "./tls/key.pem")
 		if err != nil {
 			log.Error(fmt.Sprintf("ошибка запуска сервера: %v", err))
-			return
+			os.Exit(1)
 		}
 	}()
 

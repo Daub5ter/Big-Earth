@@ -1,11 +1,11 @@
 start:
 	@echo " > запуск docker compose..."
-	docker compose up --build -d
+	docker compose -p big-earth-coursework up --build -d
 	@echo " > docker compose запущен"
 
 stop:
 	@echo " > остановка docker compose..."
-	docker compose down
+	docker compose -p big-earth-coursework down
 	@echo " > docker compose остановлен"
 
 restart:
@@ -35,6 +35,6 @@ generate_proto:
 	@echo "> нужные файлы сгенерированы"
 
 generate_keys:
-	@echo "> генерируем ключи..."
-	openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout server.key -out server.crt -subj "/C=RU/ST=Some-State/L=parsing-service/O=parsing/OU=p/CN=parsing-service" -addext "subjectAltName = DNS:parsing-service"
-	@echo "> ключи сгенерированы"
+	@echo "> генерируем сертификат..."
+	openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout key.pem -out cert.pem -subj "/C=RU/ST=Some-State/L=parsing-service/O=parsing/OU=p/CN=parsing-service" -addext "subjectAltName = DNS:parsing-service"
+	@echo "> сертификат сгенерированы"

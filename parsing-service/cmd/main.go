@@ -22,7 +22,7 @@ import (
 
 func main() {
 	// Получение конфига.
-	cfg, err := config.NewConfig("./app/parsing-config.yaml")
+	cfg, err := config.NewConfig("./configs/parsing-config.yaml")
 	if err != nil {
 		log.Error(fmt.Sprintf("ошибка прочтения файла конфигруаций: %v", err))
 		return
@@ -57,7 +57,7 @@ func main() {
 		return
 	}
 
-	creds, err := credentials.NewServerTLSFromFile("./app/cert.pem", "./app/key.pem")
+	creds, err := credentials.NewServerTLSFromFile("./tls/cert.pem", "./tls/key.pem")
 	if err != nil {
 		log.Error(fmt.Sprintf("ошибка TLS подключения: %v", err))
 		return
@@ -70,7 +70,7 @@ func main() {
 		err = grpcSrv.Serve(listenGRPC)
 		if err != nil {
 			log.Error(fmt.Sprintf("ошибка запуска сервера gRPC: %v", err))
-			return
+			os.Exit(1)
 		}
 	}()
 

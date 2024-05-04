@@ -38,7 +38,7 @@ func Parse(vr viewer.Viewer, connection string, timeout time.Duration) http.Hand
 			return
 		}
 
-		creds, err := credentials.NewClientTLSFromFile("./app/cert.pem", "")
+		creds, err := credentials.NewClientTLSFromFile("./tls/cert.pem", "")
 		if err != nil {
 			log.Error(fmt.Sprintf("не создается клиент tls: %v", err))
 			code.ErrorJSON(w, http.StatusInternalServerError, errCreds)

@@ -16,10 +16,7 @@ RUN mkdir /app
 
 COPY --from=builder /app/parsing-service /app
 
-COPY /build/cert.pem /app/cert.pem
-
-COPY /build/key.pem /app/key.pem
-
-COPY /configs/parsing-config.yaml /app/parsing-config.yaml
-
 CMD [ "app/parsing-service" ]
+
+
+

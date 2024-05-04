@@ -8,6 +8,9 @@ services:
       dockerfile: ./../api-gateway/build/api=gateway.dockerfile
     ports:
       - "443:443"
+    volumes:
+      - ./../../api-gateway/build/tls:/tls
+      - ./../../api-gateway/configs/:/configs
     restart: always
     deploy:
       mode: replicated
@@ -20,6 +23,9 @@ services:
       dockerfile: ./../parsing-service/build/parsing-service.dockerfile
     ports:
       - "50001:50001"
+    volumes:
+      - ./../../parsing-service/build/tls:/tls
+      - ./../../parsing-service/configs/:/configs
     restart: always
     deploy:
       mode: replicated

@@ -129,7 +129,7 @@ func BenchmarkPprofTrace(b *testing.B) {
 	_ = heapProf.Close()
 	trace.Stop()
 
-	err = pgsql.CloseConnection(conn)
+	err = conn.Close()
 	if err != nil {
 		b.Errorf("ошибка при завершении работы базы данных %v", err)
 		return
